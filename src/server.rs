@@ -11,24 +11,24 @@ use crate::{
 
 #[derive(Deserialize, Clone, Debug)]
 struct UptraceAlert {
-    pub id: String,
-    pub url: String,
-    pub name: String,
+    pub id: Option<String>,
+    pub url: Option<String>,
+    pub name: Option<String>,
     #[serde(rename(deserialize = "type"))]
-    pub alert_type: String,
-    pub state: String,
+    pub alert_type: Option<String>,
+    pub state: Option<String>,
     #[serde(rename(deserialize = "createdAt"))]
-    pub created_at: String,
+    pub created_at: Option<String>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 struct UptraceWebhook {
-    pub id: String,
+    pub id: Option<String>,
     #[serde(rename(deserialize = "eventName"))]
-    pub event_name: String,
+    pub event_name: Option<String>,
     pub payload: serde_json::Value,
     #[serde(rename(deserialize = "createdAt"))]
-    pub created_at: String,
+    pub created_at: Option<String>,
     pub alert: UptraceAlert,
 }
 
@@ -66,16 +66,17 @@ async fn shutdown_signal() {
 }
 
 async fn webhook_handler(Json(payload): Json<UptraceWebhook>) -> StatusCode {
+    tracing::debug!("Webhook payload: {:?}", payload);
     let bark_post_body = BarkPostBody {
         title: Some(format!(
             "{} {} 事件",
-            match payload.event_name.as_str() {
+            match payload.event_name.unwrap().as_str() {
                 "created" => "新增".to_string(),
-                "state-change" => "更新".to_string(),
+                "status-changed" => "更新".to_string(),
                 "recurring" => "重复出现".to_string(),
                 _ => "其他动作".to_string(),
             },
-            match payload.alert.alert_type.as_str() {
+            match payload.alert.alert_type.unwrap().as_str() {
                 "metric" => "监控".to_string(),
                 "error" => "错误".to_string(),
                 _ => "其他".to_string(),
@@ -83,12 +84,13 @@ async fn webhook_handler(Json(payload): Json<UptraceWebhook>) -> StatusCode {
         )),
         body: Some(format!(
             "{}\n{}",
-            payload.alert.name, payload.alert.created_at
+            payload.alert.name.unwrap(),
+            payload.alert.created_at.unwrap()
         )),
         level: Some(crate::client::BarkNotificationLevel::TimeSensitive),
         badge: None,
         auto_copy: Some(true),
-        copy: Some(payload.alert.url),
+        copy: Some(payload.alert.url.unwrap()),
         sound: Some("minuet".to_string()),
         icon: None,
     };
