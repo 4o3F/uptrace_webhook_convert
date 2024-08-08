@@ -1,0 +1,6 @@
+{
+    "port": "2233",
+    "bark_notify_urls": [
+        "https://api.day.app/key_here/"
+    ]
+}
